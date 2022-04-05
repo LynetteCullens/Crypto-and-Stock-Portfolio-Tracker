@@ -1,0 +1,61 @@
+/**
+ * @OnlyCurrentDoc
+ */
+
+function getHistoricalPerformance(){
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+   
+  var userPerformanceDates = ss.getRange('Dashboard!C53:C54').getValues();
+  var monthsData = ss.getRange('Monthly Performance!G30:G31').getValues();
+  var numMonths = monthsData[0][0];
+  var numMonthsCompleted = monthsData[1][0];
+  
+  var currentDatesArray = [[]];
+  currentDatesArray = ss.getRange("Monthly Performance!K"+(numMonthsCompleted+3)+":L"+(numMonths+2)).getDisplayValues();
+  
+  //set account filter menu to show All Accounts
+  ss.getRange('Dashboard!C4').setValue('All');
+  SpreadsheetApp.flush();
+  
+  //grab money-weighted return for the full date range
+  var totalDateRange = ss.getRange('Monthly Performance!G26:G27').getValues();
+  ss.getRange('Dashboard!C53:C54').setValues(totalDateRange);          
+  SpreadsheetApp.flush();
+  ss.getRange('Dashboard!I76').copyTo(ss.getRange("Monthly Performance!D153"), {contentsOnly: true});    
+
+  //loop through months from start to end
+  for(i=numMonthsCompleted; i<numMonths; i++){
+    
+    var currentDatesTransposed = [[]];
+    currentDatesTransposed = [[currentDatesArray[i-numMonthsCompleted][0]],[currentDatesArray[i-numMonthsCompleted][1]]];
+                                   
+    ss.getRange('Dashboard!C53:C54').setValues(currentDatesTransposed);
+            
+    SpreadsheetApp.flush();
+    
+    var currentOutputRange = "N"+(i+3)+":T"+(i+3);
+
+    //New code added in June 2021 -- force spreadsheet to delay / recalc until errors are gone 
+    var errorCheck = ss.getRange('Dashboard!J76').getValues();
+
+    while(errorCheck == "Error"){
+      var a1Cell = ss.getRange('Calculations!A1');
+      a1Cell.setFormula("=now()");
+
+      Utilities.sleep(3000);// force a pause
+      SpreadsheetApp.flush();
+      errorCheck = ss.getRange('Dashboard!J76').getValues();
+      console.log("Performance calc error still active.");
+    }
+
+    ss.getRange('Dashboard!C76:I76').copyTo(ss.getRange("Monthly Performance!"+currentOutputRange), {contentsOnly: true});    
+  }
+  
+  //reset performance date values back to initial user input
+  ss.getRange('Dashboard!C53:C54').setValues(userPerformanceDates);
+}
+
+function transpose(a){
+  return Object.keys(a[0]).map(function (c) { return a.map(function (r) { return r[c]; }); });
+}
